@@ -1,41 +1,69 @@
 import queue
 import threading
-from scapy.all import sniff, get_working_ifaces
+from scapy.all import sniff, get_working_ifaces, conf
 from parser import parse_packet
 from data import PacketData
 
-packet_queue = queue.Queue()
-data = PacketData()
 
-def packet_callback(pkt):
-    parsed = parse_packet(pkt)
-    packet_queue.put(parsed)
+class PacketCapturer:
+    def __init__(self, bpf=None):
+        self.packet_queue = queue.Queue()
+        self.storage = PacketData()
+        self.bpf = bpf
+        self.iface = self._detect_interface()
+        self._running = False
 
-def packet_worker():
-    while True:
-        parsed_packet = packet_queue.get()
-        if parsed_packet is None:
-            break
-        data.save_packet(parsed_packet)
-        print(f"({parsed_packet.protocol}) {parsed_packet.src_ip}:{parsed_packet.src_port} >>> {parsed_packet.dst_ip}:{parsed_packet.dst_port}")
-        packet_queue.task_done()
+    def _detect_interface(self):
+        try:
+            return next(
+                i
+                for i in get_working_ifaces()
+                if i.ip and i.ip != "127.0.0.1" and not i.ip.startswith("169.254")
+            )
+        except StopIteration:
+            return conf.iface
 
-if __name__ == "__main__":
-    worker_thread = threading.Thread(target=packet_worker, daemon=True)
-    worker_thread.start()
+    def _worker(self):
+        while self._running or not self.packet_queue.empty():
+            try:
+                parsed_packet = self.packet_queue.get(timeout=1)
+                self.storage.save_packet(parsed_packet)
+                print(
+                    f"({parsed_packet.protocol}) "
+                    f"{parsed_packet.src_ip}:{parsed_packet.src_port} >>> "
+                    f"{parsed_packet.dst_ip}:{parsed_packet.dst_port} "
+                    f"({parsed_packet.packet_size} bytes)"
+                )
+                self.packet_queue.task_done()
+            except queue.Empty:
+                continue
 
-    try:
-        my_iface = next(
-            i for i in get_working_ifaces() 
-            if i.ip and i.ip != "127.0.0.1" and not i.ip.startswith("169.254")
+    def _packet_callback(self, pkt):
+        parsed = parse_packet(pkt)
+        self.packet_queue.put(parsed)
+
+    def start_capture(self, count=20):
+        self._running = True
+        worker_thread = threading.Thread(target=self._worker, daemon=True)
+        worker_thread.start()
+
+        filter_str = f" [filter: '{self.bpf}']" if self.bpf else ""
+        print(
+            f"Starting capture on {self.iface.name} ({self.iface.ip}){filter_str}......."
         )
-    except StopIteration:
-        from scapy.all import conf
-        my_iface = conf.iface
 
-    print(f"Starting capture on {my_iface.name} ({my_iface.ip})............")
+        # Scapy using BPF filter
+        sniff(
+            iface=self.iface,
+            prn=self._packet_callback,
+            filter=self.bpf,
+            store=0,
+            count=count,
+        )
 
-    # testiung 50 packets
-    sniff(iface=my_iface, prn=packet_callback, store=0, count=50)
-    packet_queue.join()
-    print("Run 50 packets and now saved to DB.")
+        self._running = False
+        self.packet_queue.join()
+        print("Capture completed and saved to database.")
+
+    def stop(self):
+        self._running = False

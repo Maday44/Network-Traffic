@@ -2,13 +2,14 @@ from dataclasses import dataclass
 from typing import Optional
 from scapy.all import sniff, get_working_ifaces, IP, IPv6, TCP, UDP, ARP, Ether
 
+
 @dataclass(frozen=True)
 class ParsedPacket:
     timestamp: float
-    packet_size: int 
-    protocol: str  
-    src_ip: str 
-    dst_ip: str  
+    packet_size: int
+    protocol: str
+    src_ip: str
+    dst_ip: str
     src_port: int
     dst_port: int
     version: int
@@ -18,7 +19,6 @@ class ParsedPacket:
     ack: str
 
 
-
 def parse_packet(pkt) -> ParsedPacket:
 
     src_ip = None
@@ -26,7 +26,6 @@ def parse_packet(pkt) -> ParsedPacket:
     src_port = None
     dst_port = None
     protocol = "Ethernet"
-
 
     if pkt.haslayer(IP):
         src_ip = pkt[IP].src
@@ -41,7 +40,6 @@ def parse_packet(pkt) -> ParsedPacket:
         dst_ip = pkt[ARP].pdst
         protocol = "ARP"
 
-
     if pkt.haslayer(TCP):
         src_port = pkt[TCP].sport
         dst_port = pkt[TCP].dport
@@ -51,7 +49,6 @@ def parse_packet(pkt) -> ParsedPacket:
         dst_port = pkt[UDP].dport
         protocol = "UDP"
 
-
     return ParsedPacket(
         timestamp=float(pkt.time),
         packet_size=len(pkt),
@@ -59,15 +56,13 @@ def parse_packet(pkt) -> ParsedPacket:
         src_ip=src_ip,
         dst_ip=dst_ip,
         src_port=src_port,
-        dst_port=dst_port
+        dst_port=dst_port,
     )
-
 
 
 def process_packet(pkt):
     parsed = parse_packet(pkt)
     print(parsed)
-
 
 
 my_iface = next(i for i in get_working_ifaces() if i.index == 11)

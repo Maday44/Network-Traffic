@@ -1,4 +1,5 @@
 import scapy.all as scapy
+
 """
 install: https://npcap.com/#download
 
@@ -18,7 +19,9 @@ from scapy.all import sniff, get_working_ifaces, IP
 
 # Selects your Realtek card using its index number (11)
 # scapy > show_interface > gte wirless interface on your network my one is index 11
-my_iface = next(i for i in get_working_ifaces() if i.index == 11) #  long hardware GUID identifier
+my_iface = next(
+    i for i in get_working_ifaces() if i.index == 11
+)  #  long hardware GUID identifier
 
 ip_found = 0
 none_ip = 0
@@ -27,7 +30,7 @@ none_ip = 0
 #     global ip_found
 #     global none_ip
 
-#     # check if ip 
+#     # check if ip
 #     if pkt.haslayer(IP):
 #         ip_found += 1
 #         print('IP found')
@@ -47,23 +50,19 @@ from scapy.all import sniff, get_working_ifaces, IP, ARP, IPv6, TCP, UDP, Ether
 
 my_iface = next(i for i in get_working_ifaces() if i.index == 11)
 
-stats = {
-    "ipv4": 0,
-    "ipv6": 0,
-    "arp": 0,
-    "other": 0
-}
+stats = {"ipv4": 0, "ipv6": 0, "arp": 0, "other": 0}
+
 
 def parse_packet(pkt):
     """
     Sort the packet protocols
     """
-    
+
     # IPv4 Traffic 32 bit adress, multiple local devices can use the same IP
     if pkt.haslayer(IP):
         stats["ipv4"] += 1
         ip_layer = pkt[IP]
-        
+
         # Transport Layer
         if pkt.haslayer(TCP):
             proto_info = f"TCP {pkt[TCP].sport} -> {pkt[TCP].dport}"
@@ -82,7 +81,9 @@ def parse_packet(pkt):
         stats["arp"] += 1
         arp_layer = pkt[ARP]
         op = "Request" if arp_layer.op == 1 else "Reply"
-        print(f"[ARP {op}] Who has {arp_layer.pdst}? Tell {arp_layer.psrc} ({arp_layer.hwsrc})")
+        print(
+            f"[ARP {op}] Who has {arp_layer.pdst}? Tell {arp_layer.psrc} ({arp_layer.hwsrc})"
+        )
 
     # not IP or arp
     else:
@@ -97,6 +98,7 @@ def parse_packet(pkt):
             print(f"[OTHER] {summary}")
 
     print(f"Stats: {stats}\n")
+
 
 # Start sniffing
 sniff(iface=my_iface, prn=parse_packet, count=20)
@@ -119,11 +121,16 @@ sniff(iface=my_iface, prn=parse_packet, count=20)
 
 
 from scapy.all import ls, IP, TCP, UDP, Ether
+
 print()
-ls(IP)   # Shows all fields for the IP header (version, ihl, tos, len, id, flags, proto, src, dst, etc.)
+ls(
+    IP
+)  # Shows all fields for the IP header (version, ihl, tos, len, id, flags, proto, src, dst, etc.)
 print()
-ls(TCP)  # Shows all fields for the TCP header (sport, dport, seq, ack, dataofs, flags, etc.)
+ls(
+    TCP
+)  # Shows all fields for the TCP header (sport, dport, seq, ack, dataofs, flags, etc.)
 print()
 ls(UDP)  # Shows all fields for the UDP header (sport, dport, len, chksum)
 print()
-ls(Ether)# Shows all fields for the Ethernet header (dst, src, type)
+ls(Ether)  # Shows all fields for the Ethernet header (dst, src, type)

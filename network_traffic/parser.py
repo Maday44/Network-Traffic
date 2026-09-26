@@ -2,11 +2,13 @@ from dataclasses import dataclass
 from typing import Optional
 from scapy.all import sniff, get_working_ifaces, IP, IPv6, TCP, UDP, ARP
 
+
+# frozen shorter runtime
 @dataclass(frozen=True)
 class ParsedPacket:
     timestamp: float
-    packet_size: int 
-    protocol: str 
+    packet_size: int
+    protocol: str
     src_ip: Optional[str] = None
     dst_ip: Optional[str] = None
     src_port: Optional[int] = None
@@ -75,5 +77,5 @@ def parse_packet(pkt) -> ParsedPacket:
         ip_id=ip_id,
         ttl=ttl,
         chksum=chksum,
-        ack=ack
+        ack=ack,
     )
